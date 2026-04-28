@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Graph Algorithm Visualizer</title>
+
+<style>
+body{
+background:#1e1e1e;
+color:#00ff88;
+font-family:monospace;
+padding:20px;
+}
+
+.container{
+max-width:1500px;
+margin:auto;
+}
+
+h1{
+text-align:center;
+color:white;
+}
+
+textarea{
+width:100%;
+height:150px;
+background:black;
+color:rgb(20, 119, 255);
+font-size:18px;
+}
+
+button{
+padding:15px 22px;
+margin:8px;
+font-size:18px;
+border:none;
+border-radius:12px;
+cursor:pointer;
+}
+
+.panel{
+background:#111;
+padding:20px;
+border-radius:20px;
+margin-top:20px;
+}
+
+.console{
+background:black;
+height:420px;
+overflow:auto;
+white-space:pre-wrap;
+padding:20px;
+border:2px solid rgb(255, 0, 162);
+}
+
+.infoBox{
+display:flex;
+gap:20px;
+margin-top:20px;
+}
+
+.box{
+flex:1;
+background:black;
+padding:15px;
+border:2px solid rgb(246, 13, 13);
+height:250px;
+overflow:auto;
+white-space:pre-wrap;
+}
+
+canvas{
+background:white;
+border-radius:20px;
+margin-top:20px;
+}
+
+h3{
+margin-top:0;
+color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>
+Graph Traversal + MST Visualizer
+</h1>
+
+<div class="panel">
+
+<textarea id="edges">
+1 2 2
+1 4 6
+2 3 3
+2 4 8
+2 5 5
+3 5 7
+4 5 9
+</textarea>
+
+<br>
+
+<button onclick="buildGraph()">Build</button>
+<button onclick="runBFS()">BFS</button>
+<button onclick="runDFS()">DFS</button>
+<button onclick="runDijkstra()">Dijkstra</button>
+<button onclick="runPrim()">Prim</button>
+<button onclick="runKruskal()">Kruskal</button>
+
+</div>
+
+<canvas
+id="graph"
+width="1200"
+height="600">
+</canvas>
+
+<div class="infoBox">
+
+<div class="box">
+<h3>Adjacency List</h3>
+<div id="adjList"></div>
+</div>
+
+<div class="box">
+<h3>Adjacency Matrix</h3>
+<div id="adjMatrix"></div>
+</div>
+
+</div>
+
+<div class="panel">
+<div id="output" class="console">
+Build graph first
+</div>
+</div>
+
+</div>
+
+<script>
+
+let adj={}
+let nodes={}
+let allEdges=[]
+let n=0
+
+const canvas=
+document.getElementById(
+"graph"
+)
+
+const ctx=
+canvas.getContext(
+"2d"
+)
+
+function sleep(ms){
+return new Promise(
+r=>setTimeout(r,ms)
+)
+}
+
+function out(t){
+document
+.getElementById(
+"output"
+)
+.textContent=t
+}
+
+function showPQ(pq){
+return pq
+.slice()
+.sort(
+(a,b)=>a[0]-b[0]
+)
+.map(
+x=>"("+x[1]+","+x[0]+")"
+)
+.join(" ")
+}
+
+function showStructures(){
+
+let list=""
+
+for(let u in adj){
+
+list+=u+" -> "
+
+for(let [v,w] of adj[u]){
+
+list+="("+v+","+w+") "
+
+}
+
+list+="\n"
+
+}
+
+adjList.textContent=list
+
+let mat=[]
+
+for(
+let i=0;
+i<=n;
+i++
+)
+mat.push(
+Array(n+1).fill(0)
+)
+
+for(let [u,v,w]
+of allEdges){
+
+mat[u][v]=w
+mat[v][u]=w
+
+}
+
+let m="   "
+
+for(
+let j=1;
+j<=n;
+j++
+)
+m+=j+" "
+
+m+="\n"
+
+for(
+let i=1;
+i<=n;
+i++
+){
+
+m+=i+" "
+
+for(
+let j=1;
+j<=n;
+j++
+)
+m+=mat[i][j]+" "
+
+m+="\n"
+
+}
+
+adjMatrix.textContent=m
+
+}
+
+function buildGraph(){
+
+adj={}
+nodes={}
+allEdges=[]
+
+let lines=
+edges.value
+.trim()
+.split("\n")
+
+let ids=
+new Set()
+
+lines.forEach(line=>{
+
+let [u,v,w]=
+line.split(" ")
+.map(Number)
+
+if(!adj[u])
+adj[u]=[]
+
+if(!adj[v])
+adj[v]=[]
+
+adj[u].push(
+[v,w]
+)
+
+adj[v].push(
+[u,w]
+)
+
+allEdges.push(
+[u,v,w]
+)
+
+ids.add(u)
+ids.add(v)
+
+})
+
+n=ids.size
+
+let arr=[...ids]
+
+let cx=560
+let cy=270
+let r=210
+
+arr.forEach(
+(node,i)=>{
+
+let angle=
+2*Math.PI*i/
+arr.length
+
+nodes[node]=[
+cx+r*Math.cos(angle),
+cy+r*Math.sin(angle)
+]
+
+}
+)
+
+drawGraph()
+
+showStructures()
+
+out(
+"Graph Built"
+)
+
+}
+
+function drawGraph(
+highlight=[],
+redEdges=[],
+current=-1
+){
+
+ctx.clearRect(
+0,0,
+canvas.width,
+canvas.height
+)
+
+ctx.lineWidth=5
+
+for(let u in adj){
+
+for(let [v,w]
+of adj[u]){
+
+if(+u<v){
+
+let red=
+redEdges.some(
+e=>
+(e[0]==u&&e[1]==v)
+||
+(e[1]==u&&e[0]==v)
+)
+
+ctx.strokeStyle=
+red?
+"red":
+"black"
+
+ctx.beginPath()
+
+ctx.moveTo(
+nodes[u][0],
+nodes[u][1]
+)
+
+ctx.lineTo(
+nodes[v][0],
+nodes[v][1]
+)
+
+ctx.stroke()
+
+ctx.fillStyle=
+"blue"
+
+ctx.font=
+"28px Arial"
+
+ctx.fillText(
+w,
+(
+nodes[u][0]+nodes[v][0]
+)/2,
+(
+nodes[u][1]+nodes[v][1]
+)/2
+)
+
+}
+
+}
+
+}
+
+for(let u in nodes){
+
+ctx.beginPath()
+
+if(+u==current)
+ctx.fillStyle=
+"yellow"
+
+else if(
+highlight.includes(+u)
+)
+ctx.fillStyle=
+"lightgreen"
+
+else
+ctx.fillStyle=
+"white"
+
+ctx.arc(
+nodes[u][0],
+nodes[u][1],
+40,
+0,
+Math.PI*2
+)
+
+ctx.fill()
+ctx.stroke()
+
+ctx.fillStyle=
+"black"
+
+ctx.fillText(
+u,
+nodes[u][0]-8,
+nodes[u][1]+8
+)
+
+}
+
+}
+
+async function runBFS(){
+
+let q=[1]
+let vis={1:1}
+let order=[]
+
+let log=
+"=== BFS ===\n\n"
+
+while(q.length){
+
+log+="Queue: "+
+q.join(" ")+"\n"
+
+out(log)
+
+await sleep(800)
+
+let u=q.shift()
+
+order.push(u)
+
+drawGraph(
+order,
+[],
+u
+)
+
+log+="Visit: "+
+u+"\n"
+
+out(log)
+
+await sleep(800)
+
+for(let [v,w] of adj[u]){
+
+if(!vis[v]){
+
+vis[v]=1
+
+q.push(v)
+
+log+="Push: "+
+v+"\n"
+
+out(log)
+
+await sleep(600)
+
+}
+
+}
+
+log+="\n"
+
+}
+
+log+="Final Order:\n"+
+order.join(
+" -> "
+)
+
+drawGraph(order)
+
+out(log)
+
+}
+
+async function runDFS(){
+
+let s=[1]
+let vis={}
+let order=[]
+
+let log=
+"=== DFS ===\n\n"
+
+while(s.length){
+
+log+="Stack: "+
+[...s]
+.reverse()
+.join(" ")
++"\n"
+
+out(log)
+
+await sleep(800)
+
+let u=s.pop()
+
+if(vis[u])
+continue
+
+vis[u]=1
+
+order.push(u)
+
+drawGraph(
+order,
+[],
+u
+)
+
+log+="Visit: "+
+u+"\n"
+
+out(log)
+
+await sleep(800)
+
+let rev=
+[...adj[u]]
+.reverse()
+
+for(let x of rev){
+
+if(!vis[x[0]]){
+
+s.push(x[0])
+
+log+="Push: "+
+x[0]+"\n"
+
+out(log)
+
+await sleep(600)
+
+}
+
+}
+
+log+="\n"
+
+}
+
+log+="Final Order:\n"+
+order.join(
+" -> "
+)
+
+drawGraph(order)
+
+out(log)
+
+}
+
+async function runDijkstra(){
+
+let dist={}
+let parent={}
+let pq=[[0,1]]
+let tree=[]
+let order=[]
+
+for(let u in adj)
+dist[u]=1e9
+
+dist[1]=0
+
+let log=
+"=== Dijkstra ===\n\n"
+
+while(pq.length){
+
+log+="PQ: "+
+showPQ(pq)+
+"\n"
+
+out(log)
+
+await sleep(900)
+
+pq.sort(
+(a,b)=>a[0]-b[0]
+)
+
+let [d,u]=
+pq.shift()
+
+if(order.includes(u))
+continue
+
+order.push(u)
+
+if(parent[u])
+tree.push(
+[parent[u],u]
+)
+
+drawGraph(
+order,
+tree,
+u
+)
+
+log+="Process: "+
+u+"\n"
+
+out(log)
+
+await sleep(900)
+
+for(let [v,w] of adj[u]){
+
+if(
+d+w<
+dist[v]
+){
+
+dist[v]=d+w
+parent[v]=u
+
+pq.push(
+[dist[v],v]
+)
+
+log+="Update: "+
+v+
+" -> "+
+dist[v]+
+"\n"
+
+out(log)
+
+await sleep(700)
+
+}
+
+}
+
+log+="\n"
+
+}
+
+log+="Shortest Path Tree\n"
+
+for(let e of tree){
+
+log+=
+e[0]+" -> "+
+e[1]+"\n"
+
+}
+
+log+="\nDistances\n"
+
+for(let i in dist)
+log+=
+i+" -> "+
+dist[i]+"\n"
+
+drawGraph(order,tree)
+
+out(log)
+
+}
+
+async function runPrim(){
+
+let used={}
+let key={}
+let parent={}
+let pq=[[0,1]]
+
+for(let u in adj)
+key[u]=1e9
+
+key[1]=0
+
+let order=[]
+let mst=[]
+let cost=0
+
+let log=
+"=== Prim ===\n\n"
+
+while(pq.length){
+
+log+="PQ: "+
+showPQ(pq)+
+"\n"
+
+out(log)
+
+await sleep(900)
+
+pq.sort(
+(a,b)=>a[0]-b[0]
+)
+
+let [d,u]=
+pq.shift()
+
+if(used[u])
+continue
+
+used[u]=1
+
+order.push(u)
+
+cost+=d
+
+if(parent[u])
+mst.push(
+[parent[u],u]
+)
+
+drawGraph(
+order,
+mst,
+u
+)
+
+log+="Select: "+
+u+"\n"
+
+out(log)
+
+await sleep(900)
+
+for(let [v,w]
+of adj[u]){
+
+if(
+!used[v]
+&&
+w<key[v]
+){
+
+key[v]=w
+
+parent[v]=u
+
+pq.push(
+[w,v]
+)
+
+log+="Update "+
+v+
+"\n"
+
+out(log)
+
+await sleep(600)
+
+}
+
+}
+
+log+="\n"
+
+}
+
+if(order.length!=n){
+
+out(
+"Graph disconnected.\nPrim not possible."
+)
+
+return
+
+}
+
+log+="MST Cost = "+
+cost
+
+drawGraph(order,mst)
+
+out(log)
+
+}
+
+function find(parent,x){
+
+if(parent[x]!=x)
+parent[x]=
+find(
+parent,
+parent[x]
+)
+
+return parent[x]
+
+}
+
+function unite(
+parent,a,b
+){
+
+a=find(parent,a)
+b=find(parent,b)
+
+if(a!=b)
+parent[a]=b
+
+}
+
+async function runKruskal(){
+
+let edges=
+[...allEdges]
+.sort(
+(a,b)=>a[2]-b[2]
+)
+
+let parent={}
+
+for(let u in adj)
+parent[u]=u
+
+let mst=[]
+let cost=0
+
+let log=
+"=== Kruskal ===\n\n"
+
+for(let e of edges){
+
+let [u,v,w]=e
+
+log+=
+"Check edge "+
+u+"-"+v+
+" ("+w+")\n"
+
+out(log)
+
+await sleep(900)
+
+if(
+find(parent,u)
+!=
+find(parent,v)
+){
+
+unite(
+parent,
+u,
+v
+)
+
+mst.push(
+[u,v]
+)
+
+cost+=w
+
+drawGraph(
+Object.keys(adj)
+.map(Number),
+mst
+)
+
+log+="Take edge\n\n"
+
+out(log)
+
+await sleep(1000)
+
+}
+else{
+
+log+="Reject cycle\n\n"
+
+out(log)
+
+await sleep(800)
+
+}
+
+}
+
+if(
+mst.length!=n-1
+){
+
+out(
+"Graph disconnected.\nKruskal not possible."
+)
+
+return
+
+}
+
+log+="MST Cost = "+
+cost
+
+out(log)
+
+}
+
+buildGraph()
+
+</script>
+
+</body>
+</html>
